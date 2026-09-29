@@ -1,0 +1,37 @@
+---
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: cleanup
+spec:
+  description: This task will clean up a workspace by deleting all the files.
+  workspaces:
+    - name: source
+  steps:
+    - name: remove
+      image: alpine:3
+      env:
+        - name: WORKSPACE_SOURCE_PATH
+          value: $(workspaces.source.path)
+      workingDir: $(workspaces.source.path)
+      securityContext:
+        runAsNonRoot: false
+        runAsUser: 0
+      script: |
+        #!/usr/bin/env sh
+        set -eu
+
+        echo "Removing all files from ${WORKSPACE_SOURCE_PATH} ..."
+
+        # Do not remove the workspace directory itself because it might
+        # be the root of a mounted volume.
+        if [ -d "${WORKSPACE_SOURCE_PATH}" ]; then
+          # Delete non-hidden files and directories.
+          rm -rf "${WORKSPACE_SOURCE_PATH:?}"/*
+
+          # Delete hidden files beginning with one dot, excluding "..".
+          rm -rf "${WORKSPACE_SOURCE_PATH}"/.[!.]*
+
+          # Delete hidden files beginning with two dots and another character.
+          rm -rf "${WORKSPACE_SOURCE_PATH}"/..?*
+        fi
